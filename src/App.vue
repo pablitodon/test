@@ -47,25 +47,35 @@ const totalAmount = computed(() => {
 
 // Отправка данных в Telegram
 const sendDataToTelegram = () => {
-  const data = {
-    bill: billAmount.value,
-    tip: tipAmount.value,
-    total: totalAmount.value,
-  };
+  const message = `
+    💰 *Результаты расчета чаевых*:
+    -------------------------
+    *Сумма счёта*: ${billAmount.value} ₽
+    *Процент чаевых*: ${tipPercent.value}%
+    *Сумма чаевых*: ${tipAmount.value} ₽
+    *Итого к оплате*: ${totalAmount.value} ₽
+  `;
 
-  if (window.Telegram && window.Telegram.WebApp) {
+  if (window.Telegram?.WebApp) {
+    const data = {
+      bill: billAmount.value,
+      tipPercent: tipPercent.value,
+      tipAmount: tipAmount.value,
+      totalAmount: totalAmount.value,
+      formattedMessage: message,
+    };
+
     window.Telegram.WebApp.sendData(JSON.stringify(data));
     window.Telegram.WebApp.close();
-  } else {
-    alert("Данные для отправки: " + JSON.stringify(data));
   }
 };
 
-// Инициализация Telegram WebApp
 onMounted(() => {
   if (window.Telegram && window.Telegram.WebApp) {
-    window.Telegram.WebApp.expand(); // Раскрыть на весь экран
-    window.Telegram.WebApp.BackButton.show(); // Показать кнопку "Назад"
+    window.Telegram.WebApp.expand();
+    window.Telegram.WebApp.BackButton.onClick(() => {
+      window.Telegram.WebApp.close();
+    });
   }
 });
 </script>
