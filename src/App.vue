@@ -45,37 +45,76 @@ const totalAmount = computed(() => {
   return (Number(billAmount.value) + Number(tipAmount.value)).toFixed(2);
 });
 
+// Форматирование числа с разделением тысяч
+const formatNumber = (num) => {
+  return parseFloat(num).toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
 // Отправка данных в Telegram
-const sendDataToTelegram = () => {
-  const message = `
-    💰 *Результаты расчета чаевых*:
-    -------------------------
-    *Сумма счёта*: ${billAmount.value} ₽
-    *Процент чаевых*: ${tipPercent.value}%
-    *Сумма чаевых*: ${tipAmount.value} ₽
-    *Итого к оплате*: ${totalAmount.value} ₽
-  `;
+const sendDataToTelegram = async () => {
+  const data = {
+    bill: billAmount.value,
+    tip: tipAmount.value,
+    total: totalAmount.value,
+  };
 
   if (window.Telegram?.WebApp) {
-    const data = {
-      bill: billAmount.value,
-      tipPercent: tipPercent.value,
-      tipAmount: tipAmount.value,
-      totalAmount: totalAmount.value,
-      formattedMessage: message,
-    };
+    // Получаем данные о пользователе из Telegram
+    const user = window.Telegram.WebApp.initDataUnsafe.user;
+    const chatId = user?.id; // ID чата с пользователем
 
-    window.Telegram.WebApp.sendData(JSON.stringify(data));
-    window.Telegram.WebApp.close();
+    if (chatId) {
+      try {
+        // Отправляем сообщение через Bot API
+        await fetch(
+          `https://api.telegram.org/bot${YOUR_BOT_TOKEN}/sendMessage`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `💸 Результаты:\nСчёт: ${data.bill} ₽\nЧаевые: ${data.tip} ₽\nИтого: ${data.total} ₽`,
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "Рассчитать снова",
+                      web_app: { url: window.location.href },
+                    },
+                  ],
+                ],
+              },
+            }),
+          }
+        );
+
+        window.Telegram.WebApp.close();
+      } catch (error) {
+        console.error("Ошибка отправки:", error);
+      }
+    }
+  } else {
+    alert(JSON.stringify(data, null, 2));
   }
 };
 
 onMounted(() => {
-  if (window.Telegram && window.Telegram.WebApp) {
+  if (window.Telegram?.WebApp) {
     window.Telegram.WebApp.expand();
+    window.Telegram.WebApp.BackButton.show();
     window.Telegram.WebApp.BackButton.onClick(() => {
       window.Telegram.WebApp.close();
     });
+
+    // Можно также установить заголовок
+    window.Telegram.WebApp.setHeaderColor("#0088cc");
+    window.Telegram.WebApp.MainButton.setParams({
+      text: "Отправить результаты",
+      is_visible: true,
+    }).onClick(sendDataToTelegram);
   }
 });
 </script>
